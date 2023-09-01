@@ -16,7 +16,7 @@ class Authentication extends Category {
   /// The Trakt website will request permissions for your app, which the user needs to approve.
   /// If the user isn't signed into Trakt, it will ask them to do so.
   /// Send signup=true if you prefer the account sign up page to be the default.
-   Future<void> authorizeApplication({bool? signup}) async {
+  Future<void> authorizeApplication({bool? signup}) async {
     final url = Uri.parse(_manager._oauthURL);
     await ChromeSafariBrowser().open(url: url);
 
@@ -58,18 +58,22 @@ class Authentication extends Category {
   ///
   /// This is not required, but might improve the user experience so the user doesn't have an unused app connection hanging around.
   Future<void> revokeAccessToken() async {
-    final url = Uri.https(_manager._baseURL, "oauth/token");
+    //final url = Uri.https(_manager._baseURL, "oauth/token");
     final body = {
       "token": _manager._accessToken,
       "client_id": _manager._clientId!,
       "client_secret": _manager._clientSecret!,
     };
-    final response = await _manager.client
-        .post(url, headers: {"Content-Type": "application/json"}, body: body);
+    // final response = await _manager.client
+    //     .post(url, headers: {"Content-Type": "application/json"}, body: body);
+
+    final response = await _manager.client.post("oauth/token",
+        options: Options(headers: {"Content-Type": "application/json"}),
+        data: body);
 
     if (![200, 201, 204].contains(response.statusCode)) {
       throw TraktManagerAPIError(
-          response.statusCode, response.reasonPhrase, response);
+          response.statusCode ?? 500, response.statusMessage, response);
     }
 
     _manager._accessToken = null;
@@ -79,22 +83,26 @@ class Authentication extends Category {
   }
 
   Future<AccessTokenResponse> _oauthToken(Map<String, String> body) async {
-    final url = Uri.https(_manager._baseURL, "oauth/token");
+    //final url = Uri.https(_manager._baseURL, "oauth/token");
     body.addAll({
       "client_id": _manager._clientId!,
       "client_secret": _manager._clientSecret!,
       "redirect_uri": _manager._redirectURI!,
       "grant_type": "authorization_code"
     });
-    final response = await _manager.client
-        .post(url, headers: {"Content-Type": "application/json"}, body: body);
+    // final response = await _manager.client
+    //     .post(url, headers: {"Content-Type": "application/json"}, body: body);
+
+    final response = await _manager.client.post("oauth/token",
+        options: Options(headers: {"Content-Type": "application/json"}),
+        data: body);
 
     if (![200, 201, 204].contains(response.statusCode)) {
       throw TraktManagerAPIError(
-          response.statusCode, response.reasonPhrase, response);
+          response.statusCode ?? 500, response.statusMessage, response);
     }
 
-    final jsonResult = jsonDecode(response.body);
+    final jsonResult = jsonDecode(response.data);
     final accessTokenResponse = AccessTokenResponse.fromJsonModel(jsonResult);
 
     _manager._accessToken = accessTokenResponse.accessToken;
@@ -108,17 +116,21 @@ class Authentication extends Category {
   /// The device_code and interval will be used later to poll for the access_token.
   /// The user_code and verification_url should be presented to the user as mentioned in the flow steps above.
   Future<DeviceCodeResponse> generateDeviceCodes({bool? signup}) async {
-    final url = Uri.https(_manager._baseURL, "oauth/device/code");
-    final response = await _manager.client.post(url,
-        headers: {"Content-Type": "application/json"},
-        body: {"client_id": _manager._clientId});
+    // final url = Uri.https(_manager._baseURL, "oauth/device/code");
+    // final response = await _manager.client.post(url,
+    //     headers: {"Content-Type": "application/json"},
+    //     body: {"client_id": _manager._clientId});
+
+    final response = await _manager.client.post("oauth/device/code",
+        options: Options(headers: {"Content-Type": "application/json"}),
+        data: {"client_id": _manager._clientId});
 
     if (![200, 201, 204].contains(response.statusCode)) {
       throw TraktManagerAPIError(
-          response.statusCode, response.reasonPhrase, response);
+          response.statusCode ?? 500, response.statusMessage, response);
     }
 
-    final jsonResult = jsonDecode(response.body);
+    final jsonResult = jsonDecode(response.data);
     return DeviceCodeResponse.fromJsonModel(jsonResult);
   }
 
@@ -129,21 +141,25 @@ class Authentication extends Category {
   /// The access_token is valid for 3 months.
   /// Save and use the refresh_token to get a new access_token without asking the user to re-authenticate.
   Future<AccessTokenResponse> getDeviceAccessToken(String code) async {
-    final url = Uri.https(_manager._baseURL, "oauth/device/token");
+    //final url = Uri.https(_manager._baseURL, "oauth/device/token");
     Map<String, String> body = {
       "code": code,
       "client_id": _manager._clientId!,
       "client_secret": _manager._clientSecret!,
     };
-    final response = await _manager.client
-        .post(url, headers: {"Content-Type": "application/json"}, body: body);
+    // final response = await _manager.client
+    //     .post(url, headers: {"Content-Type": "application/json"}, body: body);
+
+    final response = await _manager.client.post("oauth/device/code",
+        options: Options(headers: {"Content-Type": "application/json"}),
+        data: body);
 
     if (![200, 201, 204].contains(response.statusCode)) {
       throw TraktManagerAPIError(
-          response.statusCode, response.reasonPhrase, response);
+          response.statusCode ?? 500, response.statusMessage, response);
     }
 
-    final jsonResult = jsonDecode(response.body);
+    final jsonResult = jsonDecode(response.data);
     final accessTokenResponse = AccessTokenResponse.fromJsonModel(jsonResult);
 
     _manager._accessToken = accessTokenResponse.accessToken;

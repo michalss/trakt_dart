@@ -2,7 +2,7 @@ library trakt_dart;
 
 import 'dart:convert';
 
-import 'package:http/http.dart' show Client, Response;
+import 'package:dio/dio.dart' show BaseOptions, Dio, Options, Response;
 import 'package:json_annotation/json_annotation.dart';
 import 'package:tuple/tuple.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
@@ -53,7 +53,6 @@ part 'trakt_manager_requests/user_requests.dart';
 
 part 'trakt_dart.g.dart';
 
-
 class TraktManager {
   String? _clientId;
   String? _clientSecret;
@@ -64,7 +63,7 @@ class TraktManager {
   String? _refreshToken;
   Map<String, String> _headers = {};
 
-  Client client;
+  Dio client;
 
   Authentication? _authentication;
   Calendar? _calendar;
@@ -119,7 +118,7 @@ class TraktManager {
       required String clientSecret,
       required String redirectURI,
       bool useStaging = false})
-      : client = Client() {
+      : client = Dio() {
     _clientId = clientId;
     _clientSecret = clientSecret;
     _redirectURI = redirectURI;
@@ -133,6 +132,13 @@ class TraktManager {
     if (useStaging) {
       _baseURL = "api-staging.trakt.tv";
     }
+
+    client = Dio(
+      BaseOptions(
+        baseUrl: _baseURL,
+        headers: _headers,
+      ),
+    );
 
     _oauthURL =
         "https://trakt.tv/oauth/authorize?response_type=code&client_id=$_clientId&redirect_uri=$_redirectURI";
@@ -178,15 +184,13 @@ class TraktManager {
       queryParams["extended"] = extendedParams.join(",");
     }
 
-    final url = Uri.https(_baseURL, request, queryParams);
-    final response = await client.get(url, headers: _headers);
-
+    final response = await client.get(request, queryParameters: queryParams);
     if (![200, 201, 204].contains(response.statusCode)) {
       throw TraktManagerAPIError(
-          response.statusCode, response.reasonPhrase, response);
+          response.statusCode ?? 500, response.statusMessage, response);
     }
 
-    final jsonResult = jsonDecode(response.body);
+    final jsonResult = jsonDecode(response.data);
     return (T).jsonDecoder(jsonResult);
   }
 
@@ -203,15 +207,15 @@ class TraktManager {
     final headers = _headers;
     headers["Authorization"] = "Bearer ${_accessToken!}";
 
-    final url = Uri.https(_baseURL, request, queryParams);
-    final response = await client.get(url, headers: _headers);
+    final response = await client.get(request,
+        queryParameters: queryParams, options: Options(headers: headers));
 
     if (![200, 201, 204].contains(response.statusCode)) {
       throw TraktManagerAPIError(
-          response.statusCode, response.reasonPhrase, response);
+          response.statusCode ?? 500, response.statusMessage, response);
     }
 
-    final jsonResult = jsonDecode(response.body);
+    final jsonResult = jsonDecode(response.data);
     return (T).jsonDecoder(jsonResult);
   }
 
@@ -229,15 +233,14 @@ class TraktManager {
       queryParams["extended"] = "full";
     }
 
-    final url = Uri.https(_baseURL, request, queryParams);
-    final response = await client.get(url, headers: _headers);
+    final response = await client.get(request, queryParameters: queryParams);
 
     if (![200, 201, 204].contains(response.statusCode)) {
       throw TraktManagerAPIError(
-          response.statusCode, response.reasonPhrase, response);
+          response.statusCode ?? 500, response.statusMessage, response);
     }
 
-    final jsonResult = jsonDecode(response.body);
+    final jsonResult = jsonDecode(response.data);
 
     if (jsonResult is Iterable) {
       return jsonResult.map((json) => (T).jsonDecoder(json) as T).toList();
@@ -262,15 +265,15 @@ class TraktManager {
     final headers = _headers;
     headers["Authorization"] = "Bearer ${_accessToken!}";
 
-    final url = Uri.https(_baseURL, request, queryParams);
-    final response = await client.get(url, headers: _headers);
+    final response = await client.get(request,
+        queryParameters: queryParams, options: Options(headers: headers));
 
     if (![200, 201, 204].contains(response.statusCode)) {
       throw TraktManagerAPIError(
-          response.statusCode, response.reasonPhrase, response);
+          response.statusCode ?? 500, response.statusMessage, response);
     }
 
-    final jsonResult = jsonDecode(response.body);
+    final jsonResult = jsonDecode(response.data);
 
     if (jsonResult is Iterable) {
       return jsonResult.map((json) => (T).jsonDecoder(json) as T).toList();
@@ -284,15 +287,15 @@ class TraktManager {
 
     queryParams.addAll(pagination?.toMap() ?? {});
 
-    final url = Uri.https(_baseURL, request, queryParams);
-    final response = await client.get(url, headers: _headers);
+    final response = await client.get(request,
+        queryParameters: queryParams, options: Options(headers: _headers));
 
     if (![200, 201, 204].contains(response.statusCode)) {
       throw TraktManagerAPIError(
-          response.statusCode, response.reasonPhrase, response);
+          response.statusCode ?? 500, response.statusMessage, response);
     }
 
-    final jsonResult = jsonDecode(response.body);
+    final jsonResult = jsonDecode(response.data);
     if (jsonResult is Iterable) {
       return jsonResult.toList().cast<int>();
     }
@@ -306,15 +309,15 @@ class TraktManager {
     final headers = _headers;
     headers["Authorization"] = "Bearer ${_accessToken!}";
 
-    final url = Uri.https(_baseURL, request);
-    final response = await client.post(url, headers: _headers, body: body);
+    final response = await client.post(request,
+        options: Options(headers: headers), data: body);
 
     if (![200, 201, 204].contains(response.statusCode)) {
       throw TraktManagerAPIError(
-          response.statusCode, response.reasonPhrase, response);
+          response.statusCode ?? 500, response.statusMessage, response);
     }
 
-    final jsonResult = jsonDecode(response.body);
+    final jsonResult = jsonDecode(response.data);
     return (T).jsonDecoder(jsonResult);
   }
 
@@ -325,15 +328,15 @@ class TraktManager {
     final headers = _headers;
     headers["Authorization"] = "Bearer ${_accessToken!}";
 
-    final url = Uri.https(_baseURL, request);
-    final response = await client.put(url, headers: _headers, body: body);
+    final response = await client.post(request,
+        options: Options(headers: headers), data: body);
 
     if (![200, 201, 204].contains(response.statusCode)) {
       throw TraktManagerAPIError(
-          response.statusCode, response.reasonPhrase, response);
+          response.statusCode ?? 500, response.statusMessage, response);
     }
 
-    final jsonResult = jsonDecode(response.body);
+    final jsonResult = jsonDecode(response.data);
     return (T).jsonDecoder(jsonResult);
   }
 
@@ -344,12 +347,12 @@ class TraktManager {
     final headers = _headers;
     headers["Authorization"] = "Bearer ${_accessToken!}";
 
-    final url = Uri.https(_baseURL, request);
-    final response = await client.delete(url, headers: _headers);
+    final response =
+        await client.delete(request, options: Options(headers: _headers));
 
     if (![200, 201, 204].contains(response.statusCode)) {
       throw TraktManagerAPIError(
-          response.statusCode, response.reasonPhrase, response);
+          response.statusCode ?? 500, response.statusMessage, response);
     }
     return;
   }
